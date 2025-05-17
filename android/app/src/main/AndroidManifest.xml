@@ -17,6 +17,10 @@
         android:label="disaster"
         android:name="${applicationName}"
         android:icon="@mipmap/ic_launcher">
+        <!-- Add your API key here -->
+        <meta-data
+            android:name="com.google.android.geo.API_KEY"
+            android:value="AIzaSyBd9FEY0Xd7qMHjLLK07R76YdoPICbHuyM"/>
         <activity
             android:name=".MainActivity"
             android:exported="true"
