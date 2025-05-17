@@ -1,39 +1,41 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:geolocator/geolocator.dart';
+import 'package:location/location.dart';
 
 class EmergencyService {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
+  final Location _location = Location();
 
   Future<bool> requestLocationPermission() async {
     bool serviceEnabled;
-    LocationPermission permission;
+    PermissionStatus permission;
 
     // Test if location services are enabled.
-    serviceEnabled = await Geolocator.isLocationServiceEnabled();
+    serviceEnabled = await _location.serviceEnabled();
     if (!serviceEnabled) {
-      return false;
+      serviceEnabled = await _location.requestService();
+      if (!serviceEnabled) {
+        return false;
+      }
     }
 
-    permission = await Geolocator.checkPermission();
-    if (permission == LocationPermission.denied) {
-      permission = await Geolocator.requestPermission();
-      if (permission == LocationPermission.denied) {
+    permission = await _location.hasPermission();
+    if (permission == PermissionStatus.denied) {
+      permission = await _location.requestPermission();
+      if (permission == PermissionStatus.denied) {
         return false;
       }
     }
     
-    if (permission == LocationPermission.deniedForever) {
+    if (permission == PermissionStatus.deniedForever) {
       return false;
     }
 
     return true;
   }
 
-  Future<Position?> getCurrentLocation() async {
+  Future<LocationData?> getCurrentLocation() async {
     try {
-      return await Geolocator.getCurrentPosition(
-        desiredAccuracy: LocationAccuracy.high
-      );
+      return await _location.getLocation();
     } catch (e) {
       print('Error getting location: $e');
       return null;
@@ -47,19 +49,19 @@ class EmergencyService {
         throw Exception('Location permission not granted');
       }
 
-      final position = await getCurrentLocation();
-      if (position == null) {
+      final locationData = await getCurrentLocation();
+      if (locationData == null) {
         throw Exception('Could not get current location');
       }
 
       await _firestore.collection('emergency_signals').add({
         'timestamp': FieldValue.serverTimestamp(),
-        'location': GeoPoint(position.latitude, position.longitude),
+        'location': GeoPoint(locationData.latitude!, locationData.longitude!),
         'status': 'pending',
-        'accuracy': position.accuracy,
-        'altitude': position.altitude,
-        'speed': position.speed,
-        'speedAccuracy': position.speedAccuracy,
+        'accuracy': locationData.accuracy,
+        'altitude': locationData.altitude,
+        'speed': locationData.speed,
+        'speedAccuracy': locationData.speedAccuracy,
       });
     } catch (e) {
       print('Error sending emergency signal: $e');

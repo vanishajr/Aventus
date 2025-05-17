@@ -1,10 +1,11 @@
 import 'package:flutter/services.dart';
-import 'package:geolocator/geolocator.dart';
+import 'package:location/location.dart';
 import 'firebase_service.dart';
 
 class VoiceAssistantService {
   static const platform = MethodChannel('com.example.disaster/voice_assistant');
   final FirebaseService _firebaseService = FirebaseService();
+  final Location _location = Location();
   bool _isListening = false;
 
   bool get isListening => _isListening;
@@ -42,14 +43,12 @@ class VoiceAssistantService {
   Future<void> makeEmergencyCall(String number) async {
     try {
       // Get current location
-      Position position = await Geolocator.getCurrentPosition(
-        desiredAccuracy: LocationAccuracy.high,
-      );
+      LocationData locationData = await _location.getLocation();
 
       // Record emergency call in Firebase
       await _firebaseService.recordEmergencyCall(
         phoneNumber: number,
-        location: '${position.latitude},${position.longitude}',
+        location: '${locationData.latitude},${locationData.longitude}',
         description: 'Emergency call initiated through voice command',
       );
 
