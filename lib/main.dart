@@ -1,24 +1,79 @@
 import 'package:flutter/material.dart';
-import 'package:firebase_core/firebase_core.dart';
-import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:firebase_storage/firebase_storage.dart';
-import 'firebase_options.dart';
 import 'screens/home_screen.dart';
 import 'screens/citizen_dashboard.dart';
 import 'screens/supplier_dashboard.dart';
 import 'screens/dashboard_screen.dart';
 import 'screens/funding_screen.dart';
+import 'screens/provide_assistance_screen.dart';
+import 'config/supabase.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  try {
-    await Firebase.initializeApp(
-      options: DefaultFirebaseOptions.currentPlatform,
+  
+  // Add error handling for platform channels
+  ErrorWidget.builder = (FlutterErrorDetails details) {
+    return MaterialApp(
+      home: Scaffold(
+        body: Center(
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              const Icon(Icons.error_outline, color: Colors.red, size: 60),
+              const SizedBox(height: 16),
+              Text(
+                'Error: ${details.exception}',
+                style: const TextStyle(color: Colors.red),
+                textAlign: TextAlign.center,
+              ),
+            ],
+          ),
+        ),
+      ),
     );
-    print('Firebase initialized successfully');
+  };
+
+  try {
+    await SupabaseConfig.initialize();
+    print('Supabase initialized successfully');
   } catch (e) {
-    print('Error initializing Firebase: $e');
+    print('Error initializing Supabase: $e');
+    // You might want to show an error screen here
+    runApp(
+      MaterialApp(
+        home: Scaffold(
+          body: Center(
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                const Icon(Icons.cloud_off, color: Colors.red, size: 60),
+                const SizedBox(height: 16),
+                const Text(
+                  'Failed to connect to the server',
+                  style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  'Error: $e',
+                  style: const TextStyle(color: Colors.red),
+                  textAlign: TextAlign.center,
+                ),
+                const SizedBox(height: 16),
+                ElevatedButton(
+                  onPressed: () {
+                    // Restart the app
+                    main();
+                  },
+                  child: const Text('Retry Connection'),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+    return;
   }
+
   runApp(const MyApp());
 }
 
@@ -56,150 +111,8 @@ class MyApp extends StatelessWidget {
         '/supplier': (context) => const SupplierDashboard(),
         '/dashboard': (context) => const DashboardScreen(),
         '/funding': (context) => const FundingScreen(),
+        '/provide_assistance': (context) => const ProvideAssistanceScreen(),
       },
-    );
-  }
-}
-
-class FirebaseConnectionTest extends StatefulWidget {
-  const FirebaseConnectionTest({super.key});
-
-  @override
-  State<FirebaseConnectionTest> createState() => _FirebaseConnectionTestState();
-}
-
-class _FirebaseConnectionTestState extends State<FirebaseConnectionTest> {
-  String _connectionStatus = 'Checking Firebase connection...';
-  bool _isLoading = true;
-  bool _isRetrying = false;
-  int _retryCount = 0;
-  static const int maxRetries = 3;
-
-  @override
-  void initState() {
-    super.initState();
-    _checkConnection();
-  }
-
-  Future<void> _checkConnection() async {
-    setState(() {
-      _isLoading = true;
-      _connectionStatus = 'Testing Firebase services...';
-    });
-
-    try {
-      // Test Firestore write
-      final writeDoc = await FirebaseFirestore.instance
-          .collection('test')
-          .add({
-        'timestamp': FieldValue.serverTimestamp(),
-        'test': 'Firebase connection test',
-      });
-      
-      // Test Firestore read
-      final readDoc = await FirebaseFirestore.instance
-          .collection('test')
-          .doc(writeDoc.id)
-          .get();
-
-      // Test Firebase Storage
-      final storageRef = FirebaseStorage.instance.ref().child('test/connection_test.txt');
-      await storageRef.putString('Connection test');
-      await storageRef.delete();
-
-      setState(() {
-        _connectionStatus = '''
-Firebase connection successful!
-✓ Firestore Write Test
-✓ Firestore Read Test
-✓ Storage Test
-All systems operational''';
-        _isLoading = false;
-        _isRetrying = false;
-      });
-
-      // Clean up test document
-      await writeDoc.delete();
-
-    } catch (e) {
-      print('Firebase connection error: $e');
-      if (_retryCount < maxRetries) {
-        _retryCount++;
-        setState(() {
-          _isRetrying = true;
-          _connectionStatus = 'Connection attempt $_retryCount of $maxRetries failed.\nRetrying in 2 seconds...';
-        });
-        await Future.delayed(const Duration(seconds: 2));
-        await _checkConnection();
-      } else {
-        setState(() {
-          _connectionStatus = '''
-Firebase connection error!
-Error details: ${e.toString()}
-Please check your internet connection and Firebase configuration.
-Tap retry to test again.''';
-          _isLoading = false;
-          _isRetrying = false;
-        });
-      }
-    }
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('Firebase Connection Test'),
-      ),
-      body: Center(
-        child: Padding(
-          padding: const EdgeInsets.all(20.0),
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              if (_isLoading)
-                Column(
-                  children: [
-                    const CircularProgressIndicator(),
-                    const SizedBox(height: 20),
-                    Text(
-                      _connectionStatus,
-                      textAlign: TextAlign.center,
-                      style: const TextStyle(fontSize: 16),
-                    ),
-                  ],
-                )
-              else
-                Text(
-                  _connectionStatus,
-                  textAlign: TextAlign.center,
-                  style: const TextStyle(fontSize: 16),
-                ),
-              const SizedBox(height: 20),
-              if (!_isLoading && !_isRetrying)
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    ElevatedButton(
-                      onPressed: () {
-                        _retryCount = 0;
-                        _checkConnection();
-                      },
-                      child: const Text('Retry Test'),
-                    ),
-                    const SizedBox(width: 16),
-                    ElevatedButton(
-                      onPressed: () {
-                        Navigator.pushReplacementNamed(context, '/home');
-                      },
-                      child: const Text('Continue to App'),
-                    ),
-                  ],
-                ),
-            ],
-          ),
-        ),
-      ),
     );
   }
 }
