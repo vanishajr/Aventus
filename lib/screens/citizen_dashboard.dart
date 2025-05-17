@@ -2,6 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:location/location.dart';
 import '../config/supabase.dart';
 import 'package:device_info_plus/device_info_plus.dart';
+import 'supply_assistant_screen.dart';
+import 'package:provider/provider.dart';
+import '../providers/language_provider.dart';
 
 class CitizenDashboard extends StatefulWidget {
   const CitizenDashboard({super.key});
@@ -42,7 +45,7 @@ class _CitizenDashboardState extends State<CitizenDashboard> {
       if (!serviceEnabled) {
         serviceEnabled = await location.requestService();
         if (!serviceEnabled) {
-          throw Exception('Location services are disabled');
+          throw Exception(Provider.of<LanguageProvider>(context, listen: false).translate('location_disabled'));
         }
       }
 
@@ -50,7 +53,7 @@ class _CitizenDashboardState extends State<CitizenDashboard> {
       if (permissionGranted == PermissionStatus.denied) {
         permissionGranted = await location.requestPermission();
         if (permissionGranted != PermissionStatus.granted) {
-          throw Exception('Location permission not granted');
+          throw Exception(Provider.of<LanguageProvider>(context, listen: false).translate('location_permission_denied'));
         }
       }
 
@@ -68,8 +71,8 @@ class _CitizenDashboardState extends State<CitizenDashboard> {
           });
 
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Emergency signal sent! Help is on the way.'),
+        SnackBar(
+          content: Text(Provider.of<LanguageProvider>(context, listen: false).translate('emergency_sent')),
           backgroundColor: Colors.green,
         ),
       );
@@ -89,26 +92,29 @@ class _CitizenDashboardState extends State<CitizenDashboard> {
 
   @override
   Widget build(BuildContext context) {
+    final languageProvider = Provider.of<LanguageProvider>(context);
+    
     return Scaffold(
+      backgroundColor: Colors.black,
       appBar: AppBar(
-        title: const Text('Citizen Dashboard'),
+        title: Text(languageProvider.translate('citizen_dashboard')),
       ),
       body: Center(
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            const Text(
-              'Emergency Assistance',
-              style: TextStyle(
+            Text(
+              languageProvider.translate('emergency_assistance'),
+              style: const TextStyle(
                 fontSize: 24,
                 fontWeight: FontWeight.bold,
               ),
             ),
             const SizedBox(height: 20),
-            const Text(
-              'Press the button below in case of emergency.\nThis will send your location to nearby suppliers.',
+            Text(
+              languageProvider.translate('emergency_description'),
               textAlign: TextAlign.center,
-              style: TextStyle(
+              style: const TextStyle(
                 fontSize: 16,
                 color: Colors.grey,
               ),
@@ -126,18 +132,18 @@ class _CitizenDashboardState extends State<CitizenDashboard> {
                 ),
                 child: _isLoading
                     ? const CircularProgressIndicator(color: Colors.white)
-                    : const Column(
+                    : Column(
                         mainAxisAlignment: MainAxisAlignment.center,
                         children: [
-                          Icon(
+                          const Icon(
                             Icons.emergency,
                             size: 64,
                             color: Colors.white,
                           ),
-                          SizedBox(height: 8),
+                          const SizedBox(height: 8),
                           Text(
-                            'EMERGENCY',
-                            style: TextStyle(
+                            languageProvider.translate('emergency_button'),
+                            style: const TextStyle(
                               fontSize: 18,
                               fontWeight: FontWeight.bold,
                               color: Colors.white,
@@ -148,6 +154,33 @@ class _CitizenDashboardState extends State<CitizenDashboard> {
               ),
             ),
           ],
+        ),
+      ),
+      floatingActionButton: FloatingActionButton.extended(
+        onPressed: () {
+          showModalBottomSheet(
+            context: context,
+            isScrollControlled: true,
+            backgroundColor: Colors.transparent,
+            builder: (context) => DraggableScrollableSheet(
+              initialChildSize: 0.9,
+              minChildSize: 0.5,
+              maxChildSize: 0.95,
+              builder: (_, controller) => Container(
+                decoration: const BoxDecoration(
+                  color: Colors.black,
+                  borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+                ),
+                child: const SupplyAssistantScreen(),
+              ),
+            ),
+          );
+        },
+        backgroundColor: const Color(0xFF4CAF50),
+        icon: const Icon(Icons.support_agent, color: Colors.white),
+        label: Text(
+          languageProvider.translate('ai_assistant_label'),
+          style: const TextStyle(color: Colors.white),
         ),
       ),
     );

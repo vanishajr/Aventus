@@ -1,11 +1,16 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import 'screens/home_screen.dart';
 import 'screens/citizen_dashboard.dart';
 import 'screens/supplier_dashboard.dart';
 import 'screens/dashboard_screen.dart';
 import 'screens/funding_screen.dart';
 import 'screens/provide_assistance_screen.dart';
+import 'screens/supply_assistant_screen.dart';
+import 'screens/disaster_education_screen.dart';
 import 'config/supabase.dart';
+import 'theme/app_theme.dart';
+import 'providers/language_provider.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -13,16 +18,17 @@ void main() async {
   // Add error handling for platform channels
   ErrorWidget.builder = (FlutterErrorDetails details) {
     return MaterialApp(
+      theme: AppTheme.theme,
       home: Scaffold(
         body: Center(
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              const Icon(Icons.error_outline, color: Colors.red, size: 60),
+              const Icon(Icons.error_outline, color: AppTheme.orange, size: 60),
               const SizedBox(height: 16),
               Text(
                 'Error: ${details.exception}',
-                style: const TextStyle(color: Colors.red),
+                style: const TextStyle(color: AppTheme.orange),
                 textAlign: TextAlign.center,
               ),
             ],
@@ -37,33 +43,48 @@ void main() async {
     print('Supabase initialized successfully');
   } catch (e) {
     print('Error initializing Supabase: $e');
-    // You might want to show an error screen here
     runApp(
       MaterialApp(
+        theme: AppTheme.theme,
         home: Scaffold(
           body: Center(
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                const Icon(Icons.cloud_off, color: Colors.red, size: 60),
+                const Icon(Icons.cloud_off, color: AppTheme.orange, size: 60),
                 const SizedBox(height: 16),
                 const Text(
                   'Failed to connect to the server',
-                  style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+                  style: TextStyle(
+                    fontSize: 20,
+                    fontWeight: FontWeight.bold,
+                    color: AppTheme.primaryGrey,
+                  ),
                 ),
                 const SizedBox(height: 8),
                 Text(
                   'Error: $e',
-                  style: const TextStyle(color: Colors.red),
+                  style: const TextStyle(color: AppTheme.orange),
                   textAlign: TextAlign.center,
                 ),
                 const SizedBox(height: 16),
-                ElevatedButton(
-                  onPressed: () {
-                    // Restart the app
-                    main();
-                  },
-                  child: const Text('Retry Connection'),
+                Container(
+                  decoration: BoxDecoration(
+                    gradient: AppTheme.greenGradient,
+                    borderRadius: BorderRadius.circular(12),
+                    boxShadow: AppTheme.elevation1,
+                  ),
+                  child: ElevatedButton(
+                    onPressed: () {
+                      main();
+                    },
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.transparent,
+                      elevation: 0,
+                      shadowColor: Colors.transparent,
+                    ),
+                    child: const Text('Retry Connection'),
+                  ),
                 ),
               ],
             ),
@@ -74,7 +95,12 @@ void main() async {
     return;
   }
 
-  runApp(const MyApp());
+  runApp(
+    ChangeNotifierProvider(
+      create: (_) => LanguageProvider(),
+      child: const MyApp(),
+    ),
+  );
 }
 
 class MyApp extends StatelessWidget {
@@ -83,27 +109,9 @@ class MyApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
+      debugShowCheckedModeBanner: false,
       title: 'Disaster Management',
-      theme: ThemeData.dark().copyWith(
-        primaryColor: Colors.green,
-        scaffoldBackgroundColor: const Color(0xFF1A1A1A),
-        colorScheme: ColorScheme.dark(
-          primary: Colors.green,
-          secondary: Colors.greenAccent,
-          surface: const Color(0xFF2A2A2A),
-          background: const Color(0xFF1A1A1A),
-        ),
-        elevatedButtonTheme: ElevatedButtonThemeData(
-          style: ElevatedButton.styleFrom(
-            backgroundColor: Colors.green,
-            foregroundColor: Colors.white,
-            padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 16),
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(12),
-            ),
-          ),
-        ),
-      ),
+      theme: AppTheme.theme,
       home: const HomeScreen(),
       routes: {
         '/home': (context) => const HomeScreen(),
@@ -112,6 +120,8 @@ class MyApp extends StatelessWidget {
         '/dashboard': (context) => const DashboardScreen(),
         '/funding': (context) => const FundingScreen(),
         '/provide_assistance': (context) => const ProvideAssistanceScreen(),
+        '/supply-assistant': (context) => const SupplyAssistantScreen(),
+        '/disaster-education': (context) => const DisasterEducationScreen(),
       },
     );
   }

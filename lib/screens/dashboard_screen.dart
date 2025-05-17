@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:fl_chart/fl_chart.dart';
 import '../config/supabase.dart';
 import 'supplier_layout.dart';
+import '../models/supply_report.dart';
 
 class DashboardScreen extends StatefulWidget {
   const DashboardScreen({super.key});
@@ -11,6 +12,14 @@ class DashboardScreen extends StatefulWidget {
 }
 
 class _DashboardScreenState extends State<DashboardScreen> {
+  SupplyReport? _latestReport;
+
+  void _updateReport(SupplyReport report) {
+    setState(() {
+      _latestReport = report;
+    });
+  }
+
   @override
   Widget build(BuildContext context) {
     return SupplierLayout(
@@ -29,6 +38,19 @@ class _DashboardScreenState extends State<DashboardScreen> {
               _buildDisasterChart(),
               const SizedBox(height: 24),
               _buildRecentActivity(),
+              const SizedBox(height: 24),
+              _latestReport == null
+                  ? const Center(
+                      child: Text(
+                        'No supply reports available.\nGenerate a report from the AI Assistant.',
+                        textAlign: TextAlign.center,
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontSize: 16,
+                        ),
+                      ),
+                    )
+                  : _buildSupplyReport(),
             ],
           ),
         ),
@@ -271,4 +293,249 @@ class _DashboardScreenState extends State<DashboardScreen> {
       .execute();
 }
 
+  Widget _buildSupplyReport() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        _buildReportHeader(),
+        const SizedBox(height: 24),
+        _buildUrgentSupplyCard(),
+        const SizedBox(height: 16),
+        _buildSupplyList(),
+        const SizedBox(height: 24),
+        _buildNextShipmentCard(),
+      ],
+    );
+  }
+
+  Widget _buildReportHeader() {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: const Color(0xFF161A1C),
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text(
+            'Supply Status Report',
+            style: TextStyle(
+              color: Color(0xFF4CAF50),
+              fontSize: 20,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+          const SizedBox(height: 8),
+          Text(
+            'Generated on: ${_latestReport!.timestamp.toString().split('.')[0]}',
+            style: TextStyle(
+              color: Colors.white.withOpacity(0.7),
+              fontSize: 14,
+            ),
+          ),
+          Text(
+            'Number of people: ${_latestReport!.numberOfPeople}',
+            style: TextStyle(
+              color: Colors.white.withOpacity(0.7),
+              fontSize: 14,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildUrgentSupplyCard() {
+    Color statusColor;
+    switch (_latestReport!.mostUrgentStatus) {
+      case 'Critical':
+        statusColor = Colors.red;
+        break;
+      case 'Low':
+        statusColor = Colors.orange;
+        break;
+      default:
+        statusColor = const Color(0xFF4CAF50);
+    }
+
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: statusColor.withOpacity(0.2),
+        border: Border.all(color: statusColor),
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Row(
+        children: [
+          Icon(
+            Icons.warning,
+            color: statusColor,
+            size: 24,
+          ),
+          const SizedBox(width: 16),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Urgent Attention Required',
+                  style: TextStyle(
+                    color: statusColor,
+                    fontSize: 16,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  '${_latestReport!.mostUrgent} (${_latestReport!.mostUrgentStatus})',
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 14,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildSupplyList() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Text(
+          'Supply Status',
+          style: TextStyle(
+            color: Colors.white,
+            fontSize: 18,
+            fontWeight: FontWeight.bold,
+          ),
+        ),
+        const SizedBox(height: 16),
+        ...(_latestReport!.supplies.entries.map((entry) {
+          final supply = entry.value;
+          return Container(
+            margin: const EdgeInsets.only(bottom: 8),
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              color: const Color(0xFF161A1C),
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Text(
+                      supply['name'],
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 16,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 8,
+                        vertical: 4,
+                      ),
+                      decoration: BoxDecoration(
+                        color: supply['status'] == 'Critical'
+                            ? Colors.red.withOpacity(0.2)
+                            : supply['status'] == 'Low'
+                                ? Colors.orange.withOpacity(0.2)
+                                : const Color(0xFF4CAF50).withOpacity(0.2),
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: Text(
+                        supply['status'],
+                        style: TextStyle(
+                          color: supply['status'] == 'Critical'
+                              ? Colors.red
+                              : supply['status'] == 'Low'
+                                  ? Colors.orange
+                                  : const Color(0xFF4CAF50),
+                          fontSize: 12,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  'Remaining: ${supply['remaining']}',
+                  style: TextStyle(
+                    color: Colors.white.withOpacity(0.7),
+                    fontSize: 14,
+                  ),
+                ),
+                Text(
+                  'Required: ${supply['required']}',
+                  style: TextStyle(
+                    color: Colors.white.withOpacity(0.7),
+                    fontSize: 14,
+                  ),
+                ),
+                Text(
+                  'Will last: ${supply['days']} days',
+                  style: TextStyle(
+                    color: Colors.white.withOpacity(0.7),
+                    fontSize: 14,
+                  ),
+                ),
+              ],
+            ),
+          );
+        }).toList()),
+      ],
+    );
+  }
+
+  Widget _buildNextShipmentCard() {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: const Color(0xFF4CAF50).withOpacity(0.2),
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Row(
+        children: [
+          const Icon(
+            Icons.local_shipping,
+            color: Color(0xFF4CAF50),
+            size: 24,
+          ),
+          const SizedBox(width: 16),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text(
+                  'Next Shipment Due',
+                  style: TextStyle(
+                    color: Color(0xFF4CAF50),
+                    fontSize: 16,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  'In ${_latestReport!.nextShipmentDue} days',
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 14,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
 } 
