@@ -14,14 +14,6 @@ void main() async {
       options: DefaultFirebaseOptions.currentPlatform,
     );
     print('Firebase initialized successfully');
-    
-    // Test Firestore connection
-    await FirebaseFirestore.instance.collection('test').add({
-      'timestamp': FieldValue.serverTimestamp(),
-      'test': 'Firebase connection test'
-    });
-    print('Firestore write test successful');
-    
   } catch (e) {
     print('Error initializing Firebase: $e');
   }
@@ -55,7 +47,7 @@ class MyApp extends StatelessWidget {
           ),
         ),
       ),
-      home: const FirebaseConnectionTest(),
+      home: const HomeScreen(),
       routes: {
         '/home': (context) => const HomeScreen(),
         '/citizen': (context) => const CitizenDashboard(),
