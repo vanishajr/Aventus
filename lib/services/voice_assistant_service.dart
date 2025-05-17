@@ -1,7 +1,10 @@
 import 'package:flutter/services.dart';
+import 'package:geolocator/geolocator.dart';
+import 'firebase_service.dart';
 
 class VoiceAssistantService {
   static const platform = MethodChannel('com.example.disaster/voice_assistant');
+  final FirebaseService _firebaseService = FirebaseService();
   bool _isListening = false;
 
   bool get isListening => _isListening;
@@ -36,8 +39,21 @@ class VoiceAssistantService {
     }
   }
 
-  Future<void> makePhoneCall(String number) async {
+  Future<void> makeEmergencyCall(String number) async {
     try {
+      // Get current location
+      Position position = await Geolocator.getCurrentPosition(
+        desiredAccuracy: LocationAccuracy.high,
+      );
+
+      // Record emergency call in Firebase
+      await _firebaseService.recordEmergencyCall(
+        phoneNumber: number,
+        location: '${position.latitude},${position.longitude}',
+        description: 'Emergency call initiated through voice command',
+      );
+
+      // Make the actual phone call
       await platform.invokeMethod('makePhoneCall', {'number': number});
     } on PlatformException catch (e) {
       print('Failed to make phone call: ${e.message}');
