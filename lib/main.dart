@@ -6,6 +6,8 @@ import 'firebase_options.dart';
 import 'screens/home_screen.dart';
 import 'screens/citizen_dashboard.dart';
 import 'screens/supplier_dashboard.dart';
+import 'screens/dashboard_screen.dart';
+import 'screens/funding_screen.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -52,6 +54,8 @@ class MyApp extends StatelessWidget {
         '/home': (context) => const HomeScreen(),
         '/citizen': (context) => const CitizenDashboard(),
         '/supplier': (context) => const SupplierDashboard(),
+        '/dashboard': (context) => const DashboardScreen(),
+        '/funding': (context) => const FundingScreen(),
       },
     );
   }
