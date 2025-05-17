@@ -1,8 +1,7 @@
-import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:location/location.dart';
+import '../config/supabase.dart';
 
 class EmergencyService {
-  final FirebaseFirestore _firestore = FirebaseFirestore.instance;
   final Location _location = Location();
 
   Future<bool> requestLocationPermission() async {
@@ -54,14 +53,15 @@ class EmergencyService {
         throw Exception('Could not get current location');
       }
 
-      await _firestore.collection('emergency_signals').add({
-        'timestamp': FieldValue.serverTimestamp(),
-        'location': GeoPoint(locationData.latitude!, locationData.longitude!),
+      await SupabaseConfig.client.from('emergency_signals').insert({
+        'created_at': DateTime.now().toIso8601String(),
+        'latitude': locationData.latitude,
+        'longitude': locationData.longitude,
         'status': 'pending',
         'accuracy': locationData.accuracy,
         'altitude': locationData.altitude,
         'speed': locationData.speed,
-        'speedAccuracy': locationData.speedAccuracy,
+        'speed_accuracy': locationData.speedAccuracy,
       });
     } catch (e) {
       print('Error sending emergency signal: $e');

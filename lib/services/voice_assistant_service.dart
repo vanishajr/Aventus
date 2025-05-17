@@ -1,10 +1,9 @@
 import 'package:flutter/services.dart';
 import 'package:location/location.dart';
-import 'firebase_service.dart';
+import '../config/supabase.dart';
 
 class VoiceAssistantService {
   static const platform = MethodChannel('com.example.disaster/voice_assistant');
-  final FirebaseService _firebaseService = FirebaseService();
   final Location _location = Location();
   bool _isListening = false;
 
@@ -45,12 +44,14 @@ class VoiceAssistantService {
       // Get current location
       LocationData locationData = await _location.getLocation();
 
-      // Record emergency call in Firebase
-      await _firebaseService.recordEmergencyCall(
-        phoneNumber: number,
-        location: '${locationData.latitude},${locationData.longitude}',
-        description: 'Emergency call initiated through voice command',
-      );
+      // Record emergency call in Supabase
+      await SupabaseConfig.client.from('emergency_calls').insert({
+        'phone_number': number,
+        'latitude': locationData.latitude,
+        'longitude': locationData.longitude,
+        'description': 'Emergency call initiated through voice command',
+        'created_at': DateTime.now().toIso8601String(),
+      });
 
       // Make the actual phone call
       await platform.invokeMethod('makePhoneCall', {'number': number});

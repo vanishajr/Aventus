@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:fl_chart/fl_chart.dart';
-import 'package:cloud_firestore/cloud_firestore.dart';
+import '../config/supabase.dart';
+import 'supplier_layout.dart';
 
 class DashboardScreen extends StatefulWidget {
   const DashboardScreen({super.key});
@@ -12,29 +13,32 @@ class DashboardScreen extends StatefulWidget {
 class _DashboardScreenState extends State<DashboardScreen> {
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('Dashboard'),
-      ),
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.all(16.0),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            _buildSummaryCards(),
-            const SizedBox(height: 24),
-            _buildDisasterChart(),
-            const SizedBox(height: 24),
-            _buildRecentActivity(),
-          ],
+    return SupplierLayout(
+      currentRoute: '/dashboard',
+      child: Scaffold(
+        appBar: AppBar(
+          title: const Text('Dashboard'),
+        ),
+        body: SingleChildScrollView(
+          padding: const EdgeInsets.all(16.0),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              _buildSummaryCards(),
+              const SizedBox(height: 24),
+              _buildDisasterChart(),
+              const SizedBox(height: 24),
+              _buildRecentActivity(),
+            ],
+          ),
         ),
       ),
     );
   }
 
   Widget _buildSummaryCards() {
-    return StreamBuilder<QuerySnapshot>(
-      stream: FirebaseFirestore.instance.collection('disasters').snapshots(),
+    return FutureBuilder<List<dynamic>>(
+      future: _fetchDisasters(),
       builder: (context, snapshot) {
         if (snapshot.hasError) {
           return const Text('Something went wrong');
@@ -44,7 +48,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
           return const CircularProgressIndicator();
         }
 
-        final activeDisasters = snapshot.data?.docs.length ?? 0;
+        final activeDisasters = snapshot.data?.length ?? 0;
         
         return GridView.count(
           crossAxisCount: 2,
@@ -81,6 +85,14 @@ class _DashboardScreenState extends State<DashboardScreen> {
         );
       },
     );
+  }
+
+  Future<List<dynamic>> _fetchDisasters() async {
+    final response = await SupabaseConfig.client
+        .from('disasters')
+        .select();
+
+    return response as List<dynamic>;
   }
 
   Widget _buildSummaryCard(String title, String value, IconData icon, Color color) {
@@ -216,12 +228,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
               ),
             ),
             const SizedBox(height: 16),
-            StreamBuilder<QuerySnapshot>(
-              stream: FirebaseFirestore.instance
-                  .collection('activity')
-                  .orderBy('timestamp', descending: true)
-                  .limit(5)
-                  .snapshots(),
+            StreamBuilder<List<dynamic>>(
+              stream: _activityStream(),
               builder: (context, snapshot) {
                 if (snapshot.hasError) {
                   return const Text('Something went wrong');
@@ -231,16 +239,18 @@ class _DashboardScreenState extends State<DashboardScreen> {
                   return const CircularProgressIndicator();
                 }
 
+                final activities = snapshot.data ?? [];
+
                 return ListView.builder(
                   shrinkWrap: true,
                   physics: const NeverScrollableScrollPhysics(),
-                  itemCount: snapshot.data?.docs.length ?? 0,
+                  itemCount: activities.length,
                   itemBuilder: (context, index) {
-                    final activity = snapshot.data?.docs[index];
+                    final activity = activities[index];
                     return ListTile(
                       leading: const Icon(Icons.notifications),
-                      title: Text(activity?['description'] ?? ''),
-                      subtitle: Text(activity?['timestamp']?.toString() ?? ''),
+                      title: Text(activity['description'] ?? ''),
+                      subtitle: Text(activity['timestamp']?.toString() ?? ''),
                     );
                   },
                 );
@@ -251,4 +261,14 @@ class _DashboardScreenState extends State<DashboardScreen> {
       ),
     );
   }
+
+  Stream<List<dynamic>> _activityStream() {
+  return SupabaseConfig.client
+      .from('activity')
+      .stream(primaryKey: ['id'])
+      .order('timestamp', ascending: false)
+      .limit(5)
+      .execute();
+}
+
 } 
