@@ -1,7 +1,35 @@
 import 'package:flutter/material.dart';
+import '../services/voice_assistant_service.dart';
 
-class HomeScreen extends StatelessWidget {
+class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
+
+  @override
+  State<HomeScreen> createState() => _HomeScreenState();
+}
+
+class _HomeScreenState extends State<HomeScreen> {
+  final VoiceAssistantService _voiceAssistant = VoiceAssistantService();
+  bool _isListening = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _startVoiceAssistant();
+  }
+
+  Future<void> _startVoiceAssistant() async {
+    await _voiceAssistant.startListening();
+    setState(() {
+      _isListening = true;
+    });
+  }
+
+  @override
+  void dispose() {
+    _voiceAssistant.stopListening();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -36,6 +64,22 @@ class HomeScreen extends StatelessWidget {
             ElevatedButton(
               onPressed: () => Navigator.pushNamed(context, '/supplier'),
               child: const Text('I am a Supplier'),
+            ),
+            const SizedBox(height: 32),
+            Text(
+              'Voice Assistant: ${_isListening ? 'Listening' : 'Not Listening'}',
+              style: TextStyle(
+                color: _isListening ? Colors.green : Colors.red,
+                fontSize: 16,
+              ),
+            ),
+            const SizedBox(height: 8),
+            const Text(
+              'Say "disaster help" for emergency assistance',
+              style: TextStyle(
+                color: Colors.grey,
+                fontSize: 14,
+              ),
             ),
           ],
         ),
