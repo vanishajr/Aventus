@@ -85,7 +85,9 @@ class MainActivity : FlutterActivity(), OnInitListener {
         val permissions = arrayOf(
             Manifest.permission.RECORD_AUDIO,
             Manifest.permission.CALL_PHONE,
-            Manifest.permission.MODIFY_AUDIO_SETTINGS
+            Manifest.permission.MODIFY_AUDIO_SETTINGS,
+            Manifest.permission.ACCESS_FINE_LOCATION,
+            Manifest.permission.ACCESS_COARSE_LOCATION
         )
 
         val permissionsToRequest = permissions.filter {
@@ -146,7 +148,6 @@ class MainActivity : FlutterActivity(), OnInitListener {
                         requestPermissionsAndStart()
                     }
                     SpeechRecognizer.ERROR_NO_MATCH -> {
-                        // Just restart listening if no speech was detected
                         restartListening()
                     }
                     else -> {
@@ -168,10 +169,14 @@ class MainActivity : FlutterActivity(), OnInitListener {
                     updateLastActivityTime()
                 }
 
-                // Restart listening after a short delay
-                android.os.Handler(android.os.Looper.getMainLooper()).postDelayed({
-                    restartListening()
-                }, 1000)
+                if (System.currentTimeMillis() - lastActivityTime >= TIMEOUT_DURATION) {
+                    speak("No emergency keyword detected for 2 minutes. Stopping voice assistant.")
+                    stopVoiceRecognition()
+                } else {
+                    android.os.Handler(android.os.Looper.getMainLooper()).postDelayed({
+                        restartListening()
+                    }, 1000)
+                }
             }
 
             override fun onPartialResults(partialResults: Bundle?) {
@@ -188,7 +193,6 @@ class MainActivity : FlutterActivity(), OnInitListener {
                 speechRecognizer.startListening(recognizerIntent)
             } catch (e: Exception) {
                 Log.e(TAG, "Error restarting speech recognition: ${e.message}")
-                // Try again after a delay
                 android.os.Handler(android.os.Looper.getMainLooper()).postDelayed({
                     startVoiceRecognition()
                 }, 1000)
@@ -203,7 +207,6 @@ class MainActivity : FlutterActivity(), OnInitListener {
             try {
                 speechRecognizer.startListening(recognizerIntent)
                 Log.d(TAG, "Voice recognition started")
-                scheduleTimeout()
             } catch (e: Exception) {
                 Log.e(TAG, "Error starting speech recognition: ${e.message}")
                 isListening = false
@@ -216,19 +219,12 @@ class MainActivity : FlutterActivity(), OnInitListener {
         if (isListening) {
             isListening = false
             speechRecognizer.stopListening()
-            timeoutHandler.removeCallbacks(timeoutRunnable)
             Log.d(TAG, "Voice recognition stopped")
         }
     }
 
-    private fun scheduleTimeout() {
-        timeoutHandler.removeCallbacks(timeoutRunnable)
-        timeoutHandler.postDelayed(timeoutRunnable, TIMEOUT_DURATION)
-    }
-
     private fun updateLastActivityTime() {
         lastActivityTime = System.currentTimeMillis()
-        scheduleTimeout()
     }
 
     private fun speak(text: String) {
@@ -264,7 +260,6 @@ class MainActivity : FlutterActivity(), OnInitListener {
                 Log.e(TAG, "No app can handle phone calls")
                 speak("Sorry, no app can handle phone calls on this device")
                 
-                // Try alternative method
                 val dialIntent = Intent(Intent.ACTION_DIAL).apply {
                     data = Uri.parse("tel:$number")
                 }
@@ -277,7 +272,6 @@ class MainActivity : FlutterActivity(), OnInitListener {
             Log.e(TAG, "Error making call: ${e.message}")
             speak("Sorry, I couldn't make the call. Please try manually dialing $number")
             
-            // Try to at least open the dialer
             try {
                 val dialIntent = Intent(Intent.ACTION_DIAL).apply {
                     data = Uri.parse("tel:$number")
@@ -301,7 +295,7 @@ class MainActivity : FlutterActivity(), OnInitListener {
                 startVoiceRecognition()
                 speak("Permissions granted. Voice assistant is starting.")
             } else {
-                speak("I need microphone and phone permissions to help you with emergency calls")
+                speak("I need microphone, phone, and location permissions to help you with emergency calls")
             }
         }
     }
@@ -317,7 +311,6 @@ class MainActivity : FlutterActivity(), OnInitListener {
 
     override fun onDestroy() {
         stopVoiceRecognition()
-        timeoutHandler.removeCallbacks(timeoutRunnable)
         tts?.stop()
         tts?.shutdown()
         speechRecognizer.destroy()
