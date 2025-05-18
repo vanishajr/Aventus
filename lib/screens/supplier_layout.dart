@@ -80,14 +80,14 @@ class SupplierLayout extends StatelessWidget {
               },
             ),
             ListTile(
-              leading: const Icon(Icons.support),
-              title: const Text('Provide Assistance'),
-              selected: currentRoute == '/provide_assistance',
+              leading: const Icon(Icons.smart_toy),
+              title: const Text('AI Assistant'),
+              selected: currentRoute == '/ai_assistant',
               selectedTileColor: Colors.green.withOpacity(0.1),
               onTap: () {
                 Navigator.pop(context);
-                if (currentRoute != '/provide_assistance') {
-                  Navigator.pushNamed(context, '/provide_assistance');
+                if (currentRoute != '/ai_assistant') {
+                  Navigator.pushNamed(context, '/ai_assistant');
                 }
               },
             ),
