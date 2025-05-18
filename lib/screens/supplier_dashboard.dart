@@ -9,6 +9,7 @@ import 'supplier_layout.dart';
 import 'donation_screen.dart';
 import 'package:provider/provider.dart';
 import '../providers/language_provider.dart';
+import 'supplier_ai_assistant.dart';
 
 class SupplierDashboard extends StatefulWidget {
   const SupplierDashboard({super.key});
@@ -30,8 +31,7 @@ class _SupplierDashboardState extends State<SupplierDashboard> {
 
   // Constants for cluster visualization
   static const double _highDensityThreshold = 5; // Minimum points for high-density cluster
-  static const double _circleRadius = 1500.0; // 1.5km radius in meters
-  static const Color _circleColor = Color.fromARGB(48, 76, 175, 80); // Light green with 0.19 opacity
+  static const double _metersPerKilometer = 1000.0; // Conversion factor from km to meters
 
   @override
   void initState() {
@@ -145,6 +145,89 @@ class _SupplierDashboardState extends State<SupplierDashboard> {
 
       // Apply clustering
       final clusters = ClusteringService.clusterLocations(emergencyPoints);
+      print('Generated ${clusters.length} clusters'); // Debug log
+
+      // Save clusters to Supabase
+      for (var cluster in clusters) {
+        try {
+          print('Processing cluster with name: ${cluster.name}'); // Debug log
+          
+          // Check if a cluster exists at this location (within a small radius)
+          final existingClusters = await SupabaseConfig.client
+              .from('clusters')
+              .select()
+              .eq('name', cluster.name);
+
+          final existingClustersList = existingClusters as List;
+          
+          if (existingClustersList.isNotEmpty) {
+            final existingCluster = existingClustersList.first;
+            
+            // If properties have changed, delete old and create new
+            if (existingCluster['radius'] != cluster.radius ||
+                existingCluster['size'] != cluster.size) {
+              
+              // Delete the old cluster
+              await SupabaseConfig.client
+                  .from('clusters')
+                  .delete()
+                  .eq('name', cluster.name);
+
+              // Create new cluster
+              final data = {
+                'name': cluster.name,
+                'latitude': cluster.center.latitude,
+                'longitude': cluster.center.longitude,
+                'size': cluster.size,
+                'radius': cluster.radius,
+                'priority': cluster.priority,
+              };
+              
+              await SupabaseConfig.client
+                  .from('clusters')
+                  .insert(data);
+              
+              print('Updated existing cluster: ${cluster.name}');
+            } else {
+              print('Cluster exists and unchanged: ${cluster.name}');
+            }
+          } else {
+            // Create new cluster if it doesn't exist
+            final data = {
+              'name': cluster.name,
+              'latitude': cluster.center.latitude,
+              'longitude': cluster.center.longitude,
+              'size': cluster.size,
+              'radius': cluster.radius,
+              'priority': cluster.priority,
+            };
+            
+            await SupabaseConfig.client
+                .from('clusters')
+                .insert(data);
+            
+            print('Created new cluster: ${cluster.name}');
+          }
+        } catch (e, stackTrace) {
+          print('Error processing cluster ${cluster.name}: $e');
+          print('Stack trace: $stackTrace');
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Text('Error processing cluster: $e'),
+                backgroundColor: Colors.red,
+                duration: const Duration(seconds: 5),
+                action: SnackBarAction(
+                  label: 'Dismiss',
+                  onPressed: () {
+                    ScaffoldMessenger.of(context).hideCurrentSnackBar();
+                  },
+                ),
+              ),
+            );
+          }
+        }
+      }
 
       setState(() {
         _emergencyMarkers.clear();
@@ -162,16 +245,16 @@ class _SupplierDashboardState extends State<SupplierDashboard> {
               markerId: MarkerId('emergency_${emergency['id']}'),
               position: position,
               icon: BitmapDescriptor.defaultMarkerWithHue(BitmapDescriptor.hueRed),
-              infoWindow: const InfoWindow(
+              infoWindow: InfoWindow(
                 title: 'Emergency Alert',
-                snippet: 'Click to navigate',
+                snippet: 'Location: ${position.latitude.toStringAsFixed(4)}, ${position.longitude.toStringAsFixed(4)}',
               ),
               onTap: () => _launchNavigation(position),
             ),
           );
         }
 
-        // Add cluster markers and circles for high-density areas
+        // Add cluster markers and circles
         for (var cluster in clusters) {
           _clusterMarkers.add(
             Marker(
@@ -180,25 +263,23 @@ class _SupplierDashboardState extends State<SupplierDashboard> {
               icon: BitmapDescriptor.defaultMarkerWithHue(BitmapDescriptor.hueOrange),
               infoWindow: InfoWindow(
                 title: 'Emergency Cluster',
-                snippet: '${cluster.size} emergencies in this area',
+                snippet: '${cluster.size} emergencies - Radius: ${cluster.radius.toStringAsFixed(2)}km',
               ),
               onTap: () => _launchNavigation(cluster.center),
             ),
           );
 
-          // Add circle for high-density clusters (5 or more points)
-          if (cluster.size >= _highDensityThreshold) {
-            _clusterCircles.add(
-              Circle(
-                circleId: CircleId('circle_${cluster.center.latitude}_${cluster.center.longitude}'),
-                center: cluster.center,
-                radius: _circleRadius,
-                fillColor: AppTheme.green.withOpacity(0.15),
-                strokeWidth: 2,
-                strokeColor: AppTheme.green.withOpacity(0.3),
-              ),
-            );
-          }
+          // Add circle for all clusters
+          _clusterCircles.add(
+            Circle(
+              circleId: CircleId('circle_${cluster.center.latitude}_${cluster.center.longitude}'),
+              center: cluster.center,
+              radius: cluster.radius * _metersPerKilometer, // Convert km to meters
+              fillColor: cluster.color.withOpacity(0.15),
+              strokeWidth: 2,
+              strokeColor: cluster.color.withOpacity(0.3),
+            ),
+          );
         }
       });
     } catch (e) {
@@ -476,38 +557,60 @@ class _SupplierDashboardState extends State<SupplierDashboard> {
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          const Text(
-                            'Emergency Response Hub',
-                            style: TextStyle(
-                              fontSize: 18,
-                              fontWeight: FontWeight.bold,
-                              color: AppTheme.white,
-                            ),
+                          Row(
+                            children: [
+                              const Icon(
+                                Icons.emergency,
+                                color: AppTheme.white,
+                                size: 20,
+                              ),
+                              const SizedBox(width: 8),
+                              const Text(
+                                'Emergency Response Hub',
+                                style: TextStyle(
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.bold,
+                                  color: AppTheme.white,
+                                ),
+                              ),
+                            ],
                           ),
                           const SizedBox(height: 8),
                           Text(
-                            'Monitor and respond to emergencies in real-time. Areas with 5+ alerts are highlighted in green.',
+                            'Monitor and respond to emergencies in real-time.',
                             style: TextStyle(
                               color: AppTheme.white.withOpacity(0.9),
-                              fontSize: 14,
+                              fontSize: 13,
+                            ),
+                          ),
+                          const SizedBox(height: 4),
+                          Text(
+                            'Clusters: red (7+ alerts), orange (4-6), green (<4)',
+                            style: TextStyle(
+                              color: AppTheme.white.withOpacity(0.7),
+                              fontSize: 12,
                             ),
                           ),
                           const SizedBox(height: 12),
-                          Row(
+                          Wrap(
+                            spacing: 8,
+                            runSpacing: 8,
                             children: [
                               _LegendItem(
                                 color: AppTheme.green,
                                 label: 'Suppliers',
                               ),
-                              const SizedBox(width: 16),
                               _LegendItem(
                                 color: Colors.red,
-                                label: 'Emergencies',
+                                label: 'High',
                               ),
-                              const SizedBox(width: 16),
                               _LegendItem(
-                                color: AppTheme.orange,
-                                label: 'Clusters',
+                                color: Colors.orange,
+                                label: 'Medium',
+                              ),
+                              _LegendItem(
+                                color: Colors.green,
+                                label: 'Low',
                               ),
                             ],
                           ),
@@ -591,9 +694,25 @@ class _SupplierDashboardState extends State<SupplierDashboard> {
                 elevation: 0,
                 backgroundColor: Colors.transparent,
                 onPressed: () {
-                  // TODO: Implement add new supplier functionality
+                  showModalBottomSheet(
+                    context: context,
+                    isScrollControlled: true,
+                    backgroundColor: Colors.transparent,
+                    builder: (context) => DraggableScrollableSheet(
+                      initialChildSize: 0.9,
+                      minChildSize: 0.5,
+                      maxChildSize: 0.95,
+                      builder: (_, controller) => Container(
+                        decoration: const BoxDecoration(
+                          color: Colors.black,
+                          borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+                        ),
+                        child: const SupplierAIAssistant(),
+                      ),
+                    ),
+                  );
                 },
-                child: const Icon(Icons.add_location, color: AppTheme.white),
+                child: const Icon(Icons.smart_toy, color: AppTheme.white),
               ),
             ),
           );

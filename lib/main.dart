@@ -8,6 +8,7 @@ import 'screens/funding_screen.dart';
 import 'screens/provide_assistance_screen.dart';
 import 'screens/supply_assistant_screen.dart';
 import 'screens/disaster_education_screen.dart';
+import 'screens/supplier_ai_assistant.dart';
 import 'config/supabase.dart';
 import 'theme/app_theme.dart';
 import 'providers/language_provider.dart';
@@ -122,6 +123,7 @@ class MyApp extends StatelessWidget {
         '/provide_assistance': (context) => const ProvideAssistanceScreen(),
         '/supply-assistant': (context) => const SupplyAssistantScreen(),
         '/disaster-education': (context) => const DisasterEducationScreen(),
+        '/ai-assistant': (context) => const SupplierAIAssistant(),
       },
     );
   }
