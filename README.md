@@ -30,8 +30,11 @@ Download the app on your android device using our .apk file
 # App Images
 
 https://github.com/user-attachments/assets/c319c622-4b61-4723-913a-4c95f3aa7e54
-![WhatsApp Image 2025-05-18 at 4 31 02 AM](https://github.com/user-attachments/assets/4d5471fc-d867-404c-936d-b18ab3f079fb)
-![WhatsApp Image 2025-05-18 at 4 31 03 AM](https://github.com/user-attachments/assets/c3bc16bc-da4a-43ba-9905-d2b51e68cb9d)
-![WhatsApp Image 2025-05-18 at 4 31 04 AM](https://github.com/user-attachments/assets/08674305-f7fb-4be6-a831-b2a43b38103a)
-![WhatsApp Image 2025-05-18 at 4 31 01 AM](https://github.com/user-attachments/assets/729ae545-9d30-4b54-bcf1-089fff4b6480)
+
+<br>
+<img src="https://github.com/user-attachments/assets/4d5471fc-d867-404c-936d-b18ab3f079fb" alt="Alt Text" width="300">
+<img src="https://github.com/user-attachments/assets/c3bc16bc-da4a-43ba-9905-d2b51e68cb9d" alt="Alt Text" width="300">
+<img src="https://github.com/user-attachments/assets/08674305-f7fb-4be6-a831-b2a43b38103a" alt="Alt Text" width="300">
+<img src="https://github.com/user-attachments/assets/729ae545-9d30-4b54-bcf1-089fff4b6480" alt="Alt Text" width="300">
+
 
