@@ -29,7 +29,7 @@ Download the app on your android device using our .apk file
 
 # App Images
 
-https://github.com/user-attachments/assets/c319c622-4b61-4723-913a-4c95f3aa7e54
+https://github.com/user-attachments/assets/c44c9faf-12e7-405c-b8e4-f8913e51b4ef
 
 <br>
 <img src="https://github.com/user-attachments/assets/4d5471fc-d867-404c-936d-b18ab3f079fb" alt="Alt Text" width="300">
